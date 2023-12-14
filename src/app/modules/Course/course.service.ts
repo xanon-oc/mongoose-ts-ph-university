@@ -32,7 +32,7 @@ const getSingleCourseFromDB = async (id: string) => {
   );
   return result;
 };
-
+// update
 const updateCourseIntoDB = async (id: string, payload: Partial<TCourse>) => {
   const { preRequisiteCourses, ...courseRemainingData } = payload;
 
