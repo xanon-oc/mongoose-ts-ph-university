@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-this-alias */
 import bcrypt from 'bcrypt';
 import { Schema, model } from 'mongoose';
 import config from '../../config';
@@ -17,6 +18,9 @@ const userSchema = new Schema<TUser, UserModel>(
     needsPasswordChange: {
       type: Boolean,
       default: true,
+    },
+    passwordChangedAt: {
+      type: Date,
     },
     role: {
       type: String,
@@ -41,10 +45,12 @@ userSchema.pre('save', async function (next) {
   // eslint-disable-next-line @typescript-eslint/no-this-alias
   const user = this; // doc
   // hashing password and save into DB
+
   user.password = await bcrypt.hash(
     user.password,
     Number(config.bcrypt_salt_rounds),
   );
+
   next();
 });
 
@@ -54,18 +60,24 @@ userSchema.post('save', function (doc, next) {
   next();
 });
 
-//checking user exists or not
 userSchema.statics.isUserExistsByCustomId = async function (id: string) {
   return await User.findOne({ id }).select('+password');
 };
 
-//checking user password matched or not
-
 userSchema.statics.isPasswordMatched = async function (
   plainTextPassword,
-  hashPassword,
+  hashedPassword,
 ) {
-  return await bcrypt.compare(plainTextPassword, hashPassword);
+  return await bcrypt.compare(plainTextPassword, hashedPassword);
+};
+
+userSchema.statics.isJWTIssuedBeforePasswordChanged = function (
+  passwordChangedTimestamp: Date,
+  jwtIssuedTimestamp: number,
+) {
+  const passwordChangedTime =
+    new Date(passwordChangedTimestamp).getTime() / 1000;
+  return passwordChangedTime > jwtIssuedTimestamp;
 };
 
 export const User = model<TUser, UserModel>('User', userSchema);
